@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Auditor"
+  short_description: "Audit AI agent architecture"
+  default_prompt: "Use $agent-auditor to audit this agent architecture and summarize the top risks."
