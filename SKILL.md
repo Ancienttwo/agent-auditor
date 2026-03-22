@@ -1,6 +1,6 @@
 ---
 name: agent-auditor
-description: Audit existing AI agents, agentic coding systems, and agent-like workflows for architecture quality, implementation risks, and improvement opportunities. Use when asked to audit this agent, review agent architecture, run an agent health check, assess agent design, evaluate agent implementation, inspect agent engineering quality, check an AI workflow's maturity, 审计 Agent 架构, 评估 Agent 工程质量, or scan a codebase for agent anti-patterns. Do not use when building a new agent from scratch, debugging a single bug, or doing prompt-only optimization without architecture review.
+description: Audit existing AI agents, agentic coding systems, and agent-like workflows for architecture quality, implementation risks, and improvement opportunities. Use when asked to audit this agent, review agent architecture, run an agent health check, assess agent design, evaluate agent implementation, inspect agent engineering quality, check an AI workflow's maturity, audit a Claude Code system, audit a Claude Agent SDK application, 审计 Agent 架构, 评估 Agent 工程质量, 审计 Claude Code 配置, 审计 Agent SDK 应用, or scan a codebase for agent anti-patterns. Do not use when building a new agent from scratch, debugging a single bug, or doing prompt-only optimization without architecture review.
 ---
 
 # Agent Auditor
@@ -14,9 +14,20 @@ Produce a structured review with file-backed evidence, per-dimension scores, an 
 Confirm the minimum audit context before reading deeply:
 
 - target repo, path, or design document set
+- audit target type (see below)
 - full audit or scoped audit
 - known constraints or intentionally missing subsystems
 - desired response mode
+
+### Audit Target Type
+
+Ask the user to confirm which aspect to audit:
+
+1. **Project Agent implementation** — audit the Agent built in the current workspace (Claude Agent SDK, LangGraph, custom framework, etc.)
+2. **Development environment configuration** — audit the .claude/ .codex/ engineering setup quality (CLAUDE.md, Skills, Hooks, MCP, etc.)
+3. **Both** — audit project code and development environment together
+
+Scan file markers first to help the user decide, then confirm their choice.
 
 Default to an in-chat report. Write a file only when the user explicitly asks.
 
@@ -68,6 +79,18 @@ Read enough code to locate:
 - observability hooks
 - security boundaries
 
+#### Platform detection
+
+After the general recon, detect platform markers to determine which overlay to load:
+
+**Claude Code markers** (2+ present → `platform: claude-code`):
+`.claude/`, `CLAUDE.md`, `.claude/settings.json`, `.claude/rules/`, `SKILL.md`, Hook config, MCP config in settings.json, `MEMORY.md`, `HANDOFF.md`
+
+**Agent SDK markers** (any present → `platform: agent-sdk`):
+`claude_agent_sdk` or `@anthropic-ai/claude-agent-sdk` in imports/dependencies, `query()`, `ClaudeSDKClient`, `ClaudeAgentOptions`, `AgentDefinition`, `settingSources`/`setting_sources` config, `permission_mode`/`permissionMode` config
+
+Both can be present simultaneously → `platform: claude-code + agent-sdk`.
+
 ### 2. Map the architecture
 
 Summarize the system in terms of:
@@ -77,6 +100,7 @@ Summarize the system in terms of:
 - tool model: built-in, MCP, shell, browser, API wrappers, or mixed
 - evaluation model: tests, harnesses, graders, or manual only
 - safety model: isolation, authorization, logging, validation, and fallback
+- platform: `claude-code` | `agent-sdk` | `claude-code + agent-sdk` | `custom` | `unknown`
 
 ### 3. Audit the scored dimensions
 
@@ -95,6 +119,10 @@ Score these ten dimensions in order (they build on each other — understanding 
 
 Read [audit-rubric.md](references/audit-rubric.md) once for orientation, then revisit only the relevant section while scoring each dimension.
 
+If the target platform includes `claude-code`, also load [claude-code-overlay.md](references/claude-code-overlay.md) and apply its per-dimension sub-criteria alongside the base rubric.
+
+If the target platform includes `agent-sdk`, also load [agent-sdk-overlay.md](references/agent-sdk-overlay.md) and apply its per-dimension sub-criteria alongside the base rubric.
+
 For each scored dimension, always output:
 
 - `score`
@@ -106,7 +134,11 @@ Allow `N/A` only when the dimension truly does not apply. Explain why.
 
 ### 4. Run the anti-pattern scan
 
-Check the target for the eight anti-patterns in [audit-rubric.md](references/audit-rubric.md).
+Check the target for the eight base anti-patterns in [audit-rubric.md](references/audit-rubric.md).
+
+If the target platform includes `claude-code`, also scan AP9–AP14 from [claude-code-overlay.md](references/claude-code-overlay.md).
+
+If the target platform includes `agent-sdk`, also scan AP15–AP20 from [agent-sdk-overlay.md](references/agent-sdk-overlay.md).
 
 Do not fold anti-pattern findings into the numeric score. Report them separately.
 
@@ -130,6 +162,8 @@ Group changes into:
 - Strategic changes
 
 Make recommendations mechanism-level and specific. Prefer suggestions such as tightening tool schemas, externalizing state, adding trace events, or turning failures into regression cases.
+
+When sequencing recommendations across dimensions, prefer: security → memory consolidation → skills/context → evaluation → multi-agent.
 
 ### 7. Return the report
 
@@ -174,7 +208,19 @@ Load [audit-rubric.md](references/audit-rubric.md) when:
 
 Load [report-template.md](references/report-template.md) only when assembling the final report.
 
-Do not load both files in full unless the task is broad enough to justify it.
+Load [claude-code-overlay.md](references/claude-code-overlay.md) when:
+
+- the target platform is identified as `claude-code` during recon
+- scoring any dimension for a claude-code system
+- checking claude-code-specific anti-patterns (AP9–AP14)
+
+Load [agent-sdk-overlay.md](references/agent-sdk-overlay.md) when:
+
+- the target platform is identified as `agent-sdk` during recon
+- scoring any dimension for an agent-sdk system
+- checking agent-sdk-specific anti-patterns (AP15–AP20)
+
+Do not load overlay files for systems where the platform is `custom` or `unknown`.
 
 ## Quality Bar
 

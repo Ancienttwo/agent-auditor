@@ -27,6 +27,7 @@ Audit whether the core runtime stays small, stable, and composable. Good systems
   - Is tool feedback reinjected in a clear way?
   - Which control pattern is primary? Identify one: Prompt Chaining, Routing, Parallelization, Orchestrator-Workers, or Evaluator-Optimizer
   - Is the system correctly classified as Workflow (code-driven path) vs Agent (LLM-driven decisions) vs Hybrid?
+  - Does the core loop stay under ~50 lines of code? (larger loops signal that policy, state, or side effects are leaking in)
 - Search hints:
   - `rg -n "while|loop|stop_reason|tool_use|orchestr" .`
   - filenames containing `agent`, `loop`, `runtime`, `session`
@@ -91,6 +92,8 @@ Audit how the system manages context density, layering, compaction, and stable p
   - Are deterministic rules kept outside the prompt via Hooks or code (never re-read by model)?
   - Is the file system used as a context interface? (tools write to files, Agent reads on demand — Dynamic Context Discovery)
   - For Skill-based systems: do Skill descriptions include anti-examples? (without anti-examples, routing accuracy drops from 85% to 53%)
+  - Is Skill loading disciplined? (scan before every reply, load one at a time, prefer most specific match when multiple Skills could apply)
+  - Are Skill bodies lean? (content in supporting files not inlined, single responsibility per Skill, side-effect Skills rate-limited)
 - Search hints:
   - `rg -n "prompt|system|summary|compact|cache|skill|memory|SOUL|AGENTS" .`
   - prompt builders, skill loaders, memory injectors
@@ -124,7 +127,9 @@ Audit whether tools are designed for agent goals rather than raw APIs. Good tool
   - Is the active tool count controlled? (5 MCP servers alone can consume ~55K tokens of definitions — nearly 30% of a 200K context)
   - Are framework-level messages (compression events, notifications) filtered before reaching the LLM? (AgentMessage vs Message separation)
   - Is there dynamic tool discovery (search_tools) rather than loading all definitions at once?
-  - Identify the tool design generation: raw API wrapping, ACI (goal-oriented), or Advanced (search + code orchestration + examples)
+  - For multi-step tool sequences: can the model orchestrate via code (programmatic tool calling) to keep intermediate results out of LLM context? (token reduction from ~150K to ~2K)
+  - Identify the tool design generation: raw API wrapping, ACI (goal-oriented), or Advanced (dynamic discovery + programmatic tool calling + examples)
+  - When a behavior needs to be reliable, is it implemented as a dedicated tool rather than an optional parameter or format instruction? (optional parameter → required format → dedicated tool = increasing reliability)
 - Search hints:
   - `rg -n "tool|input_schema|zod|json schema|mcp|function" .`
   - tool registries, API wrappers, handler definitions
@@ -189,6 +194,8 @@ Audit whether long tasks can survive restarts, pauses, or session changes. Stron
   - Is task state stored as structured JSON (not Markdown) for reliable machine parsing?
   - Is there a heartbeat or cron mechanism for proactive task resumption (not waiting for user messages)?
   - Is only one task `in_progress` at a time, with explicit status transitions?
+  - Are slow I/O operations (shell, network) offloaded to background threads with results injected before the next LLM call?
+  - Is there automatic progress reminder injection when task status has not been updated for multiple turns?
 - Search hints:
   - `rg -n "checkpoint|resume|queue|task|state|persist|heartbeat|cron" .`
   - task folders, session stores, job records, durable planners
@@ -220,7 +227,9 @@ Audit whether delegation is structured, isolated, and worth the complexity. Good
   - Do sub-agents have minimal system prompts (Tooling + Workspace + Runtime only — no Skills, no Memory leakage)?
   - Are recursion or depth limits enforced (max_depth to prevent infinite sub-agent spawning)?
   - Is there cross-validation to break hallucination amplification chains (Agent A → B → C converging on a confident wrong answer)?
+  - Is the collaboration mode intentional? Distinguish Conductor (synchronous, human-in-loop each turn, ephemeral output) from Orchestrator (asynchronous delegation, human reviews persistent artifacts at end)
   - Is there a task graph with explicit dependency tracking (.tasks/ or equivalent)?
+  - Was multi-agent design introduced in the right order? (protocol first → isolation → then collaboration and parallelism)
 - Search hints:
   - `rg -n "spawn|delegate|worker|planner|subagent|orchestrator|worktree" .`
   - coordinator modules, task routers, worker protocols
@@ -255,6 +264,7 @@ Audit whether the team can measure capability and regressions separately. Strong
   - Are real failures converted into future test cases immediately?
   - Are both positive and negative test cases present? (only testing "should do X" leads to one-directional optimization)
   - Is there a process for adding harder cases when pass rates approach 100%?
+  - When eval scores drop, is the eval system checked first before changing the Agent? ("先修评测，再改 Agent")
 - Search hints:
   - `rg -n "eval|benchmark|grader|pass@k|regression|fixture|golden" .`
   - eval folders, harnesses, grader code, fixture repos

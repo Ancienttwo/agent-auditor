@@ -7,6 +7,8 @@ Use this structure for the final response. Keep it readable in chat. Write a fil
 - Target:
 - Scope:
 - Classification: `workflow` | `agent` | `hybrid`
+- Primary control pattern: `Prompt Chaining` | `Routing` | `Parallelization` | `Orchestrator-Workers` | `Evaluator-Optimizer`
+- Platform: `claude-code` | `agent-sdk` | `claude-code + agent-sdk` | `custom` | `unknown`
 - Evidence base:
 - Constraints or blind spots:
 
@@ -73,6 +75,28 @@ When a dimension does not apply, write `N/A` and explain why.
 | Missing evaluation |  |  |  |
 | Premature multi-agent |  |  |  |
 | Constraints by hope, not mechanism |  |  |  |
+
+When platform is `claude-code`, also scan:
+
+| Anti-pattern | Status | Evidence | Smallest credible fix |
+| --- | --- | --- | --- |
+| CLAUDE.md as knowledge dump (AP9) |  |  |  |
+| MCP server sprawl (AP10) |  |  |  |
+| Skills without anti-examples (AP11) |  |  |  |
+| Hooks doing semantic judgment (AP12) |  |  |  |
+| Subagent privilege leak (AP13) |  |  |  |
+| Cache-breaking prompt design (AP14) |  |  |  |
+
+When platform is `agent-sdk`, also scan:
+
+| Anti-pattern | Status | Evidence | Smallest credible fix |
+| --- | --- | --- | --- |
+| bypassPermissions as default (AP15) |  |  |  |
+| Unbounded agent runs (AP16) |  |  |  |
+| Overly broad tool access (AP17) |  |  |  |
+| Missing error recovery (AP18) |  |  |  |
+| Session state amnesia (AP19) |  |  |  |
+| Hardcoded secrets (AP20) |  |  |  |
 
 ## Prioritized Roadmap
 
