@@ -1,23 +1,34 @@
 ---
 name: agent-auditor
-description: Audit existing AI agents, agentic coding systems, and agent-like workflows for architecture quality, implementation risks, and improvement opportunities. Use when asked to audit this agent, review agent architecture, run an agent health check, assess agent design, evaluate agent implementation, inspect agent engineering quality, check an AI workflow's maturity, audit a Claude Code system, audit a Claude Agent SDK application, 审计 Agent 架构, 评估 Agent 工程质量, 审计 Claude Code 配置, 审计 Agent SDK 应用, or scan a codebase for agent anti-patterns. Do not use when building a new agent from scratch, debugging a single bug, or doing prompt-only optimization without architecture review.
+description: Audit existing AI agents, agentic coding systems, and agent-like workflows for architecture quality, implementation risks, failure patterns, and optimization opportunities. Use when asked to audit this agent, review agent architecture, run an agent health check, assess agent design, evaluate agent implementation, inspect agent engineering quality, check an AI workflow's maturity, audit a Claude Code system, audit a Claude Agent SDK application, review a transcript or tool trace of agent behavior, 审计 Agent 架构, 评估 Agent 工程质量, 审计 Claude Code 配置, 审计 Agent SDK 应用, or scan a codebase for agent anti-patterns. Do not use when building a new agent from scratch, debugging a single bug without architectural implications, or doing prompt-only optimization without architecture review.
 ---
 
 # Agent Auditor
 
 Audit an existing Agent or AI workflow without modifying the target codebase.
 
-Produce a structured review with file-backed evidence, per-dimension scores, an anti-pattern scan, blocking issues, and a prioritized improvement roadmap.
+Produce a structured audit plus an evidence-backed optimization plan with file- or trace-backed evidence, per-dimension scores, an anti-pattern scan, blocking issues, and a prioritized set of fixes.
 
 ## Start With Intake
 
 Confirm the minimum audit context before reading deeply:
 
-- target repo, path, or design document set
+- target repo, path, design document set, transcript, or tool trace
 - audit target type (see below)
 - full audit or scoped audit
 - known constraints or intentionally missing subsystems
 - desired response mode
+
+### Evidence Source
+
+Classify the evidence source before reading deeply:
+
+- `repo`: implementation files in the current workspace are the main source of truth
+- `design docs`: architecture docs or plans are the main source of truth
+- `transcript trace`: conversation logs, tool traces, screenshots, or user feedback samples are the main source of truth
+- `mixed`: more than one of the above matters materially
+
+Treat transcripts and tool traces as first-class audit evidence, not as secondary anecdotes.
 
 ### Audit Target Type
 
@@ -53,13 +64,35 @@ Use these classifications to explain why some dimensions are strong, weak, or `N
 
 ## Audit Workflow
 
+0. Reconstruct the failure or success path when behavioral evidence exists.
 1. Recon the implementation surface.
 2. Map the architecture.
 3. Audit the scored dimensions.
 4. Run the anti-pattern scan.
 5. Judge maturity and blockers.
-6. Build the roadmap.
+6. Build the optimization plan.
 7. Return the report.
+
+### 0. Failure Reconstruction
+
+When the evidence source includes `transcript trace`, user feedback, screenshots, or tool logs, start here before reading implementation details.
+
+Reconstruct the behavior in concrete terms:
+
+- what the user was actually trying to achieve
+- what tool path or response path the system actually took
+- where the first meaningful failure occurred
+- which fallback, Skill, tool, or escalation path should have triggered next
+- whether the miss is best explained by capability gap, routing error, missing recovery path, or missing evaluation coverage
+
+If the target already had a relevant capability, call that out explicitly. Distinguish:
+
+- capability missing
+- capability exists but did not trigger
+- capability triggered but failed unrecoverably
+- capability succeeded and the complaint is elsewhere
+
+Do not jump into dimension scores until the failure chain is clear.
 
 ### 1. Recon the implementation surface
 
@@ -78,6 +111,8 @@ Read enough code to locate:
 - evaluation harness
 - observability hooks
 - security boundaries
+
+If transcript evidence exists, inspect the implementation after reconstructing behavior so you can validate or falsify the suspected root cause.
 
 #### Platform detection
 
@@ -99,6 +134,10 @@ Summarize the system in terms of:
 - state model: in-memory, files, database, queue, or mixed
 - tool model: built-in, MCP, shell, browser, API wrappers, or mixed
 - evaluation model: tests, harnesses, graders, or manual only
+- failure handling model: retry-only, fallback ladder, user handoff, or mixed
+- fallback / escalation path: what should happen after the first failure
+- user handoff policy: when the system should ask the user for extra input
+- existing capabilities to reuse: what already exists that could solve the problem without new tooling
 - safety model: isolation, authorization, logging, validation, and fallback
 - platform: `claude-code` | `agent-sdk` | `claude-code + agent-sdk` | `custom` | `unknown`
 
@@ -132,6 +171,15 @@ For each scored dimension, always output:
 
 Allow `N/A` only when the dimension truly does not apply. Explain why.
 
+When a dimension contains a blocking issue, also output:
+
+- `problem`
+- `root cause`
+- `smallest credible fix`
+- `how to verify`
+
+Do not stop at "improve fallback" or "tighten prompts." Keep tracing the mechanism until the recommendation is implementable.
+
 ### 4. Run the anti-pattern scan
 
 Check the target for the eight base anti-patterns in [audit-rubric.md](references/audit-rubric.md).
@@ -153,15 +201,24 @@ Use the dimension scores and anti-pattern findings to assign one overall maturit
 
 List the blocking issues that most limit reliability, safety, or maintainability.
 
-### 6. Build the roadmap
+For each blocking issue, make the opinionated recommendation explicit. Say what you would change first and why.
+
+### 6. Build the optimization plan
 
 Group changes into:
 
-- Quick Wins
-- Medium-term improvements
-- Strategic changes
+- Immediate fixes
+- Design corrections
+- Eval additions
+- Not in scope
 
-Make recommendations mechanism-level and specific. Prefer suggestions such as tightening tool schemas, externalizing state, adding trace events, or turning failures into regression cases.
+Make recommendations mechanism-level and specific. Prefer suggestions such as tightening tool schemas, adding explicit fallback triggers, externalizing state, adding trace events, or turning real failures into regression cases.
+
+Include one "What already exists" check:
+
+- what existing capability or workflow already solves part of the problem
+- whether the system should reuse it, route to it, or replace it
+- whether the gap is missing capability or missing activation of an existing capability
 
 When sequencing recommendations across dimensions, prefer: security → memory consolidation → skills/context → evaluation → multi-agent.
 
@@ -170,6 +227,8 @@ When sequencing recommendations across dimensions, prefer: security → memory c
 Use [report-template.md](references/report-template.md) as the response skeleton when assembling the final report.
 
 Default to chat output. Write a file only on request.
+
+Keep unresolved decisions and evidence blind spots visible. Do not pretend design intent is settled when the evidence is incomplete.
 
 ## Scoring Rules
 
@@ -192,6 +251,7 @@ Back every conclusion with concrete evidence:
 - cite real files and line numbers when possible
 - prefer implementation evidence over README claims
 - distinguish code evidence from documentation evidence
+- distinguish transcript evidence from code evidence
 - say `not found` when something is expected but absent
 - call out uncertainty when only design docs are available
 
@@ -229,6 +289,9 @@ Before finishing, verify that:
 - every applicable dimension has a score or justified `N/A`
 - every dimension includes evidence
 - recommendations are concrete and actionable
+- blocking issues include root cause, smallest credible fix, and verification path
 - the maturity judgment matches the actual findings
 - anti-patterns are reported separately from numeric scoring
+- the failure chain is explicit when behavioral evidence exists
+- the report makes clear whether the gap is missing capability or a failure to use existing capability
 - the report remains readable without access to your scratch notes

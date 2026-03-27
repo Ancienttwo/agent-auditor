@@ -55,6 +55,9 @@ Audit whether the system has executable acceptance criteria, clear execution bou
   - Are execution boundaries encoded in tools, tests, or policy?
   - Are logs, metrics, or traces available as feedback?
   - Is there a retry, revert, or rollback path?
+  - After a tool or step fails, is there a clear next escalation path rather than an immediate handoff to the user?
+  - Does the system distinguish "this tool failed" from "this task cannot be completed"?
+  - Does the system delay user handoff until public or already-available fallback paths are exhausted?
   - Are constraints enforced mechanically instead of only described?
   - Is knowledge stored in the codebase itself, not in external docs the Agent cannot see? ("Agent 看不到的内容等于不存在")
   - Can the Agent complete tasks end-to-end without human intervention?
@@ -71,11 +74,13 @@ Audit whether the system has executable acceptance criteria, clear execution bou
   - `9-10`: robust harness that reliably moves work into machine-checkable space
 - Typical issues:
   - agent claims completion without validation
+  - one failed tool call is treated as proof that the task is impossible
+  - the user must remind the system to try an existing fallback path
   - policies live only in prose
   - knowledge lives in Notion/Confluence but not in the repo
 - Optimization directions:
   - Quick Win: turn one real failure into a regression check
-  - Medium: encode boundaries in lint, types, or validators; move critical docs into codebase
+  - Medium: encode escalation paths and user handoff policy in tools, validators, or routing logic; move critical docs into codebase
   - Strategic: build an end-to-end harness tied to representative tasks; push all core tasks into the "goal-clear + auto-verifiable" quadrant
 
 ## D3. Context Engineering
@@ -92,6 +97,8 @@ Audit how the system manages context density, layering, compaction, and stable p
   - Are deterministic rules kept outside the prompt via Hooks or code (never re-read by model)?
   - Is the file system used as a context interface? (tools write to files, Agent reads on demand — Dynamic Context Discovery)
   - For Skill-based systems: do Skill descriptions include anti-examples? (without anti-examples, routing accuracy drops from 85% to 53%)
+  - Do Skill triggers consider failure signals such as `401/402/403/429`, login walls, JS-gated pages, or empty renders?
+  - Can the system infer missing Skill routing from transcript evidence instead of relying only on topic keywords?
   - Is Skill loading disciplined? (scan before every reply, load one at a time, prefer most specific match when multiple Skills could apply)
   - Are Skill bodies lean? (content in supporting files not inlined, single responsibility per Skill, side-effect Skills rate-limited)
 - Search hints:
@@ -109,9 +116,10 @@ Audit how the system manages context density, layering, compaction, and stable p
   - external content enters context without filtering
   - compression discards architecture decisions or corrupts identifiers (UUIDs, hashes, URLs)
   - Skill descriptions are too long (45+ tokens) or lack "don't use when" anti-examples
+  - routing keys only on user topic, not on the failure mode that should trigger a different Skill
 - Optimization directions:
   - Quick Win: move bulky knowledge into references or files; add anti-examples to Skill descriptions
-  - Medium: add summarization or tool-result replacement; define explicit compression priority list
+  - Medium: add summarization or tool-result replacement; define explicit compression priority list; encode failure-triggered routing cues
   - Strategic: redesign prompt assembly around stable prefix plus dynamic suffix; use file system as context interface for tool outputs
 
 ## D4. Tool Design
@@ -122,8 +130,10 @@ Audit whether tools are designed for agent goals rather than raw APIs. Good tool
   - Do tool names and descriptions reveal when to use and not use them?
   - Do schemas constrain parameters clearly?
   - Are errors structured enough to support recovery (error code + suggestion, not just a string)?
+  - Do tools or Skills describe what to try next after common failures?
   - Are tool definitions close to implementations (e.g., Zod schema co-located with handler)?
   - Are examples available for complex tools? (adding 1-5 real call examples raises accuracy from 72% to 90%)
+  - For difficult public web content (social posts, JS-heavy pages, login-adjacent flows), is there explicit next-tool guidance or example usage?
   - Is the active tool count controlled? (5 MCP servers alone can consume ~55K tokens of definitions — nearly 30% of a 200K context)
   - Are framework-level messages (compression events, notifications) filtered before reaching the LLM? (AgentMessage vs Message separation)
   - Is there dynamic tool discovery (search_tools) rather than loading all definitions at once?
@@ -142,11 +152,13 @@ Audit whether tools are designed for agent goals rather than raw APIs. Good tool
   - `9-10`: highly legible, example-driven tools that support self-correction
 - Typical issues:
   - too many overlapping tools
+  - tool failures return only a raw error string, with no recovery hint
+  - complex pages require browse-like capabilities but the next step is not documented anywhere
   - stringly typed error returns with no repair guidance
   - internal framework events pollute LLM context
 - Optimization directions:
   - Quick Win: add explicit "use when / do not use when" wording to tool descriptions
-  - Medium: tighten schemas, standardize error envelopes with recovery suggestions, filter framework messages before LLM
+  - Medium: tighten schemas, standardize error envelopes with recovery suggestions, and filter framework messages before LLM
   - Strategic: redesign around ACI primitives; implement dynamic tool discovery for large tool sets
 
 ## D5. Memory
@@ -259,9 +271,11 @@ Audit whether the team can measure capability and regressions separately. Strong
   - Are graders appropriate for the task type? Three types: code graders (deterministic, prefer these), model graders (semantic), human graders (baseline calibration)
   - Is Pass@k (capability — "can it ever do this?") distinguished from Pass^k (regression — "does it still do this reliably")?
   - Are both transcript (how it behaved) and outcome (what actually changed in the environment) evaluated?
+  - Does the evaluation check not only the final answer, but whether the tool path or fallback path was the right one?
   - Are environment failures distinguishable from model failures? (resource limits can kill processes; infra noise looks identical to model regression)
   - Is environment isolation maintained between test runs (clean state, no shared cache)?
   - Are real failures converted into future test cases immediately?
+  - Are transcript-only failures turned into regression cases even before the full implementation root cause is proven?
   - Are both positive and negative test cases present? (only testing "should do X" leads to one-directional optimization)
   - Is there a process for adding harder cases when pass rates approach 100%?
   - When eval scores drop, is the eval system checked first before changing the Agent? ("先修评测，再改 Agent")
@@ -279,8 +293,9 @@ Audit whether the team can measure capability and regressions separately. Strong
   - only aggregate scores are watched; per-task breakdowns are ignored
   - eval suite is saturated (100% pass rate) and no longer tests real capability boundaries
   - Agent is modified based on bad eval signal without checking the eval system first
+  - the answer looks acceptable, but the system took the wrong tool path and nobody notices
 - Optimization directions:
-  - Quick Win: capture one production failure as an eval case; add a negative test case
+  - Quick Win: capture one production failure or transcript failure as an eval case; add a negative test case
   - Medium: split infra errors from model outcome metrics; implement environment reset between runs; distinguish Pass@k from Pass^k
   - Strategic: maintain a living eval suite with task diversity, grader fit, and regular difficulty escalation
 
@@ -358,7 +373,7 @@ Scan these eight anti-patterns independently of the numeric score:
 5. Memory accumulates without consolidation
 6. Evaluation is missing or too weak to catch regressions
 7. Multi-agent design appears before single-agent limits are understood
-8. Constraints rely on expectations in docs instead of enforceable mechanisms
+8. Constraints rely on expectations in docs instead of enforceable mechanisms, including cases where the user must remind the system to try an existing Skill, browser flow, or fallback path
 
 For each anti-pattern, report:
 
@@ -366,3 +381,9 @@ For each anti-pattern, report:
 - concrete evidence
 - why it matters
 - the smallest credible fix
+
+When anti-pattern 8 is present, explicitly state whether the failure came from:
+
+- missing capability
+- existing capability not being routed to
+- existing capability being routed to too late

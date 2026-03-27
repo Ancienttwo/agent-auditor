@@ -1,19 +1,20 @@
 # Agent Auditor
 
-A Claude Code skill that audits existing AI agents, agentic coding systems, Claude Code setups, and Claude Agent SDK applications for architecture quality, implementation risks, and improvement opportunities.
+A Claude Code skill that audits existing AI agents, agentic coding systems, Claude Code setups, and Claude Agent SDK applications for architecture quality, implementation risks, failure patterns, and optimization opportunities.
 
 ## What It Does
 
-Agent Auditor produces a structured review covering:
+Agent Auditor produces a structured audit plus optimization plan covering:
 
 - **System classification** — workflow, agent, or hybrid; control pattern identification
 - **10 scored dimensions** — control flow, harness, context engineering, tool design, memory, autonomy, multi-agent organization, evaluation, tracing, and security boundaries
+- **Failure reconstruction** — transcript-first analysis of what the user wanted, what path the system took, where it failed, and which fallback should have happened next
 - **Platform-aware overlays** — Claude Code and Claude Agent SDK sub-criteria layered on top of the base rubric when relevant
 - **Anti-pattern scan** — 8 base failure modes, plus Claude Code AP9-AP14 and Agent SDK AP15-AP20 when platform markers are present
 - **Maturity judgment** — early, developing, mature, or exemplar
-- **Prioritized roadmap** — quick wins, medium-term improvements, and strategic changes
+- **Optimization plan** — immediate fixes, design corrections, eval additions, and explicit not-in-scope items
 
-Every conclusion is backed by file-level evidence and line numbers.
+Every conclusion is backed by file-level or trace-level evidence, with line numbers when available.
 
 ## Install
 
@@ -40,6 +41,19 @@ Or ask naturally:
 - "Review the agent engineering quality of this repo"
 - "Audit this Claude Code setup"
 - "Audit this Claude Agent SDK app"
+- "Audit this transcript and tell me how to improve the skill"
+- "Review this tool trace and explain why the fallback path failed"
+
+## Evidence Sources
+
+Agent Auditor supports multiple evidence sources:
+
+- **Repo-first audit** — inspect implementation files in the current workspace
+- **Design-doc audit** — inspect architecture docs or plans when code is incomplete
+- **Transcript / tool-trace audit** — reconstruct a failure chain from conversation logs, tool traces, screenshots, or user feedback
+- **Mixed audit** — combine behavior evidence with code or design docs to validate the likely root cause
+
+When transcript evidence is available, Agent Auditor reconstructs the failure chain before scoring dimensions.
 
 ## Audit Targets
 
@@ -86,9 +100,12 @@ The final report includes a `Platform` field with one of:
 The report template includes:
 
 - audit target, scope, classification, control pattern, and detected platform
+- failure chain, primary root cause, and optimization thesis
+- what capabilities already exist and whether the issue is missing capability or failed routing
 - per-dimension scores with evidence and recommendations
 - a separate anti-pattern table so anti-pattern findings do not distort numeric scoring
-- a prioritized roadmap grouped into quick wins, medium-term improvements, and strategic changes
+- a prioritized optimization plan grouped into immediate fixes, design corrections, eval additions, and not-in-scope items
+- unresolved decisions and blind spots when the evidence is incomplete
 
 ## License
 

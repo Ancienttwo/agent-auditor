@@ -9,14 +9,23 @@ Use this structure for the final response. Keep it readable in chat. Write a fil
 - Classification: `workflow` | `agent` | `hybrid`
 - Primary control pattern: `Prompt Chaining` | `Routing` | `Parallelization` | `Orchestrator-Workers` | `Evaluator-Optimizer`
 - Platform: `claude-code` | `agent-sdk` | `claude-code + agent-sdk` | `custom` | `unknown`
-- Evidence base:
+- Evidence base: `repo` | `design docs` | `transcript trace` | `mixed`
 - Constraints or blind spots:
 
 ## Overall Conclusion
 
 - Maturity: `early` | `developing` | `mature` | `exemplar`
 - Summary:
+- Failure chain:
+- Primary root cause:
+- Optimization thesis:
 - Blocking issues:
+
+## What Already Exists
+
+- Existing capabilities:
+- Reuse vs rebuild judgment:
+- Is this a missing capability or a failure to use an existing one?
 
 ## Dimension Score Table
 
@@ -61,6 +70,13 @@ Repeat this block for each applicable dimension:
 - Assessment:
 - Recommendation:
 
+If this dimension contains a blocking issue, also include:
+
+- Problem:
+- Root cause:
+- Smallest credible fix:
+- How to verify:
+
 When a dimension does not apply, write `N/A` and explain why.
 
 ## Anti-Pattern Scan
@@ -98,20 +114,28 @@ When platform is `agent-sdk`, also scan:
 | Session state amnesia (AP19) |  |  |  |
 | Hardcoded secrets (AP20) |  |  |  |
 
-## Prioritized Roadmap
+## Optimization Plan
 
-### Quick Wins
+### Immediate Fixes
 
-- 
+- Add the first mechanism-level fix that should happen now.
 
-### Medium-Term Improvements
+### Design Corrections
 
-- 
+- Add the structural or routing correction that prevents recurrence.
 
-### Strategic Changes
+### Eval Additions
 
-- 
+- Add the regression case, grader change, or eval coverage expansion.
 
-## Reviewed Files
+### Not In Scope
 
-- 
+- List intentionally deferred work with a one-line rationale.
+
+## Unresolved Decisions / Assumptions
+
+- Record unresolved choices, assumptions, or missing evidence.
+
+## Reviewed Evidence
+
+- List the files, docs, transcripts, tool traces, screenshots, or comments you relied on.
